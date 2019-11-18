@@ -119,9 +119,6 @@ if __name__ == "__main__":
         train_dataset = CIFAR10Dataset(train=not opt.train_on_val, max_size=1 if opt.debug else -1)
         val_dataset = CIFAR10Dataset(train=0, max_size=1 if opt.debug else -1)
 
-    import pdb
-    pdb.set_trace()
-    input()
     print("creating dataloaders")
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
