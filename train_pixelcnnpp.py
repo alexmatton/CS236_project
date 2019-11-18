@@ -33,7 +33,7 @@ parser.add_argument("--model_checkpoint", type=str, default=None,
 parser.add_argument("--print_every", type=int, default=10)
 parser.add_argument("--dataset", type=str, default="cifar10", choices=["imagenet32", "cifar10"])
 parser.add_argument("--conditioning", type=str, default="unconditional", choices=["unconditional", "one-hot", "bert"])
-
+parser.add_argument("--tier", type=int, default=1)
 
 def train(model, embedder, optimizer, scheduler,
           train_loader, val_loader, opt):
@@ -102,15 +102,26 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
+    vocab_file = "map_clsloc.txt"
+    if opt.tier == 2:
+        vocab_file = "map_clsloc2.txt"
+        print("Categories: 2")
+    if opt.tier == 3:
+        vocab_file = "map_clsloc3.txt"
+        print("Categories: 3")
+
     print("loading dataset")
     if opt.dataset == "imagenet32":
-        train_dataset = Imagenet32Dataset(train=not opt.train_on_val, max_size=1 if opt.debug else -1)
-        val_dataset = Imagenet32Dataset(train=0, max_size=1 if opt.debug else -1)
+        train_dataset = Imagenet32Dataset(train=not opt.train_on_val, max_size=1 if opt.debug else -1, vocab_file=vocab_file)
+        val_dataset = Imagenet32Dataset(train=0, max_size=1 if opt.debug else -1, vocab_file=vocab_file)
     else:
         assert opt.dataset == "cifar10"
         train_dataset = CIFAR10Dataset(train=not opt.train_on_val, max_size=1 if opt.debug else -1)
         val_dataset = CIFAR10Dataset(train=0, max_size=1 if opt.debug else -1)
 
+    import pdb
+    pdb.set_trace()
+    input()
     print("creating dataloaders")
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
@@ -122,6 +133,8 @@ if __name__ == "__main__":
         batch_size=opt.batch_size,
         shuffle=True,
     )
+
+
 
     print("Len train : {}, val : {}".format(len(train_dataloader), len(val_dataloader)))
 

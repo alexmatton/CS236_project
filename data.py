@@ -24,7 +24,7 @@ class CaptionedImageDataset(Dataset):
 
 
 class Imagenet32Dataset(CaptionedImageDataset):
-    def __init__(self, root="datasets/ImageNet32", train=True, max_size=-1):
+    def __init__(self, root="datasets/ImageNet32", train=True, max_size=-1, vocab_file = "map_clsloc.txt"):
         '''
         :param dirname: str, root dir where the dataset is downloaded
         :param train: bool, true if train set else val
@@ -38,7 +38,7 @@ class Imagenet32Dataset(CaptionedImageDataset):
         else:
             self.dirname = os.path.join(root, "val")
 
-        self.classId2className = load_vocab_imagenet(os.path.join(root, "map_clsloc.txt"))
+        self.classId2className = load_vocab_imagenet(os.path.join(root, vocab_file))
         data_files = sorted(os.listdir(self.dirname))
         self.images = []
         self.labelIds = []
@@ -87,9 +87,9 @@ class CIFAR10Dataset(CaptionedImageDataset):
 def load_vocab_imagenet(vocab_file):
     vocab = {}
     with open(vocab_file) as f:
-        for l in f.readlines():
-            _, id, name = l[:-1].split(" ")
-            vocab[int(id) - 1] = name.replace("_", " ")
+        for num, l in enumerate(f.readlines()):
+            _, _, name = l[:-1].split(" ")
+            vocab[int(num)] = name.replace("_", " ")
     return vocab
 
 
