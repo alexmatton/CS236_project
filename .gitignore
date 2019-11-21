@@ -3,3 +3,4 @@ datasets/CIFAR10
 datasets/ImageNet32/train/
 datasets/ImageNet32/val/
 outputs/
+test.py
