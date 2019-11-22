@@ -3,7 +3,7 @@ import os
 from data import CIFAR10Dataset, Imagenet32Dataset
 from models.embedders import BERTEncoder, OneHotClassEmbedding, UnconditionalClassEmbedding
 import torch
-from models.transfo import TransfoSoftmax
+from models.transfo_logistics import GenerativeTransformer
 from utils.utils import sample_image, load_model
 from torch.optim import lr_scheduler
 import time
@@ -33,10 +33,10 @@ parser.add_argument("--dataset", type=str, default="cifar10", choices=["imagenet
 parser.add_argument("--conditioning", type=str, default="unconditional", choices=["unconditional", "one-hot", "bert"])
 parser.add_argument("--tier", type=int, default=1)
 
-parser.add_argument("--nlayers", type=int, default=4, help="number of layers for transformer")
+parser.add_argument("--nlayers", type=int, default=6, help="number of layers for transformer")
 parser.add_argument("--nhead", type=int, default=2, help="number of heads for transformer")
-parser.add_argument("--d_model", type=int, default=128, help="number of dims of embeddings for transformer")
-
+parser.add_argument("--d_model", type=int, default=256, help="number of dims of embeddings for transformer")
+# These parameters are the maximum we can use for K80 memory
 
 def train(model, embedder, optimizer, scheduler,
           train_loader, val_loader, opt):
@@ -54,7 +54,6 @@ def train(model, embedder, optimizer, scheduler,
 
             optimizer.zero_grad()
             outputs = model.forward(imgs, condition_embd)
-
             loss = outputs['loss'].mean()
             loss.backward()
             optimizer.step()
@@ -153,7 +152,7 @@ if __name__ == "__main__":
         assert opt.conditioning == "one-hot"
         encoder = OneHotClassEmbedding(train_dataset.n_classes)
 
-    generative_model = TransfoSoftmax(
+    generative_model = GenerativeTransformer(
         embd_size=encoder.embed_size, 
         d_model=opt.d_model, 
         nhead=opt.nhead, 

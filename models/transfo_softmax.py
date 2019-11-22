@@ -13,8 +13,7 @@ else:
     from models.interface import ConditionedGenerativeModel
 
 
-
-class TransfoSoftmax(ConditionedGenerativeModel):
+class GenerativeTransformer(ConditionedGenerativeModel):
     ''' Code partly taken from https://pytorch.org/tutorials/beginner/transformer_tutorial.html '''
 
     def __init__(self, embd_size, d_model, nhead, nlayers, dropout=0.5):
@@ -22,7 +21,7 @@ class TransfoSoftmax(ConditionedGenerativeModel):
         :param embd_size: int, dimension of the conditional embedding
         '''
 
-        super(TransfoSoftmax, self).__init__(embd_size)
+        super(GenerativeTransformer, self).__init__(embd_size)
         self.model_type = 'Transformer'
 
         # Model:
@@ -40,7 +39,7 @@ class TransfoSoftmax(ConditionedGenerativeModel):
         self.lin_b = nn.Linear(d_model+2*256, 256)
         self.init_weights()
 
-        self.loss = nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss(reduction='sum')
 
         self.condition_embed_layer = nn.Linear(embd_size, d_model)
 
@@ -112,7 +111,8 @@ class TransfoSoftmax(ConditionedGenerativeModel):
         blue_distrib = blue_distrib.permute(1, 2, 0)
 
         model_output = torch.stack([red_distrib, green_distrib, blue_distrib], 2) #bsize, 256, 3, h*w
-        loss = self.loss(model_output, initial_imgs_256)
+
+        loss = self.loss(model_output, initial_imgs_256) / (32*32*bsize)
 
         output = {"loss": loss, "log_likelihood": None,
                    "model_output": model_output.reshape(bsize, 256, 3, h, w)} #bsize, 256, 3, h, w
@@ -172,7 +172,7 @@ class PositionalEncoding(nn.Module):
 
 if __name__ == "__main__":
 
-    transformer_model = TransfoSoftmax(16, 12, 2, 3) #embedzise, d_model, nhead, nlayers
+    transformer_model = GenerativeTransformer(16, 12, 2, 3) #embedzise, d_model, nhead, nlayers
     transformer_model.eval()
     example_img = torch.rand((32, 3, 28, 28)) * 2 -1 # b, c, h, w
     conditionning = torch.randn((32, 16)) # b, embedsize
