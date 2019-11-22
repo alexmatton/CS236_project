@@ -20,7 +20,7 @@ else:
 class GenerativeTransformer(ConditionedGenerativeModel):
     ''' Code partly taken from https://pytorch.org/tutorials/beginner/transformer_tutorial.html '''
 
-    def __init__(self, embd_size, d_model, nhead, nlayers, dropout=0.5):
+    def __init__(self, embd_size, d_model, nhead, nlayers, dropout=0.2):
         '''
         :param embd_size: int, dimension of the conditional embedding
         '''
@@ -33,12 +33,7 @@ class GenerativeTransformer(ConditionedGenerativeModel):
         encoder_layers = TransformerEncoderLayer(d_model, nhead, d_model * 4, dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layers, nlayers)
         self.d_model = d_model
-        self.color_to_embedding = nn.Sequential(
-            nn.Linear(3, 4 * d_model),
-            nn.ReLU(),
-            nn.Linear(4 * d_model, d_model)
-        )
-        self.init_weights()
+        self.color_to_embedding = nn.Linear(3, d_model)
 
         self.loss = discretized_mix_logistic_loss
 
@@ -46,10 +41,9 @@ class GenerativeTransformer(ConditionedGenerativeModel):
 
         self.embedding_to_logistic_distrib = nn.Sequential(
             nn.Linear(self.d_model, 100),
-            nn.ReLU(),
+            nn.ELU(),
             nn.Linear(100, 100)
         )
-        
 
         # Next attributes will be initialized at the first iteration
         self.first_token_embedding = None
@@ -58,14 +52,10 @@ class GenerativeTransformer(ConditionedGenerativeModel):
 
     def _generate_square_subsequent_mask(self, sz):
         """ Returns tensor (sz * sz) strictly upper triangular of -infty (rest is 0) """
-        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = (torch.triu(torch.ones(sz, sz), diagonal=0) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
-
-    def init_weights(self):
-        pass
         
-
     def forward(self, imgs, condition_embd):
         '''
         :param imgs: torch.FloatTensor bsize * c * h * w
@@ -90,9 +80,9 @@ class GenerativeTransformer(ConditionedGenerativeModel):
             self.mask = self._generate_square_subsequent_mask(imgs.size(0)).to(device) #h, w
 
         if self.first_token_embedding is None:
-            self.first_token_embedding = torch.randn(
+            self.first_token_embedding = (torch.randn(
                 (1, 1, self.d_model), dtype=imgs.dtype
-            ).to(device) #1, 1, d_model
+            ) / math.sqrt(self.d_model)).to(device) #1, 1, d_model
 
         condition_embd_model = self.condition_embed_layer(condition_embd).squeeze(0)
 

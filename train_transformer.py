@@ -80,7 +80,7 @@ def train(model, embedder, optimizer, scheduler,
         torch.save(model.state_dict(),
                    os.path.join(opt.output_dir, 'models', 'epoch_{}.pt'.format(epoch)))
 
-    scheduler.step()
+        scheduler.step()
 
 
 def eval(model, embedder, test_loader):
