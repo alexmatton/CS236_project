@@ -32,14 +32,19 @@ parser.add_argument("--print_every", type=int, default=10)
 parser.add_argument("--dataset", type=str, default="cifar10", choices=["imagenet32", "cifar10"])
 parser.add_argument("--conditioning", type=str, default="unconditional", choices=["unconditional", "one-hot", "bert"])
 parser.add_argument("--tier", type=int, default=1)
+parser.add_argument("--gradient_accumulation", type=int, default=1, help="number of batches to accumulate before gradient")
+
 
 parser.add_argument("--nlayers", type=int, default=6, help="number of layers for transformer")
 parser.add_argument("--nhead", type=int, default=2, help="number of heads for transformer")
 parser.add_argument("--d_model", type=int, default=256, help="number of dims of embeddings for transformer")
+
 # These parameters are the maximum we can use for K80 memory
 
 def train(model, embedder, optimizer, scheduler,
           train_loader, val_loader, opt):
+    print(f"Batch size is {opt.batch_size} and gradient accumulation {opt.gradient_accumulation}"
+          f" so actual batch size is {opt.batch_size*opt.gradient_accumulation}")
     print("TRAINING STARTS")
     for epoch in range(opt.n_epochs):
         model = model.train()
@@ -52,11 +57,14 @@ def train(model, embedder, optimizer, scheduler,
             with torch.no_grad():
                 condition_embd = embedder(labels, captions)
 
-            optimizer.zero_grad()
             outputs = model.forward(imgs, condition_embd)
-            loss = outputs['loss'].mean()
+            loss = outputs['loss'].mean() / opt.gradient_accumulation
             loss.backward()
-            optimizer.step()
+
+            if (i + 1) % opt.gradient_accumulation == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+
             batches_done = epoch * len(train_loader) + i
             writer.add_scalar('train/bpd', loss / np.log(2), batches_done)
             loss_to_log += loss.item()
