@@ -34,11 +34,9 @@ parser.add_argument("--conditioning", type=str, default="unconditional", choices
 parser.add_argument("--tier", type=int, default=1)
 parser.add_argument("--gradient_accumulation", type=int, default=1, help="number of batches to accumulate before gradient")
 
-
 parser.add_argument("--nlayers", type=int, default=6, help="number of layers for transformer")
 parser.add_argument("--nhead", type=int, default=2, help="number of heads for transformer")
 parser.add_argument("--d_model", type=int, default=256, help="number of dims of embeddings for transformer")
-
 # These parameters are the maximum we can use for K80 memory
 
 def train(model, embedder, optimizer, scheduler,
@@ -67,7 +65,7 @@ def train(model, embedder, optimizer, scheduler,
 
             batches_done = epoch * len(train_loader) + i
             writer.add_scalar('train/bpd', loss / np.log(2), batches_done)
-            loss_to_log += loss.item()
+            loss_to_log += loss.item() * opt.gradient_accumulation
             if (i + 1) % opt.print_every == 0:
                 loss_to_log = loss_to_log / (np.log(2) * opt.print_every)
                 print(
