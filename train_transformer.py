@@ -62,6 +62,7 @@ def train(model, embedder, optimizer, scheduler,
             if (i + 1) % opt.gradient_accumulation == 0:
                 optimizer.step()
                 optimizer.zero_grad()
+            scheduler.step()
 
             batches_done = epoch * len(train_loader) + i
             writer.add_scalar('train/bpd', loss / np.log(2), batches_done)
@@ -69,8 +70,8 @@ def train(model, embedder, optimizer, scheduler,
             if (i + 1) % opt.print_every == 0:
                 loss_to_log = loss_to_log / (np.log(2) * opt.print_every)
                 print(
-                    "[Epoch %d/%d] [Batch %d/%d] [bpd: %f] [Time/batch %.3f]"
-                    % (epoch + 1, opt.n_epochs, i + 1, len(train_loader), loss_to_log, time.time() - start_batch)
+                    "[Epoch %d/%d] [Batch %d/%d] [bpd: %f] [Time/batch %.3f] [Lr %.3E]"
+                    % (epoch + 1, opt.n_epochs, i + 1, len(train_loader), loss_to_log, time.time() - start_batch, scheduler.get_lr()[0])
                 )
                 loss_to_log = 0.0
 
@@ -85,9 +86,6 @@ def train(model, embedder, optimizer, scheduler,
 
         torch.save(model.state_dict(),
                    os.path.join(opt.output_dir, 'models', 'epoch_{}.pt'.format(epoch)))
-
-        scheduler.step()
-
 
 def eval(model, embedder, test_loader):
     print("EVALUATING ON VAL")
@@ -175,8 +173,16 @@ if __name__ == "__main__":
     print("Conditioning initial dimension:", encoder.embed_size)
 
     # Optimizers
-    optimizer = torch.optim.Adam(generative_model.parameters(), lr=opt.lr)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=opt.lr_decay)
+    optimizer = torch.optim.AdamW(generative_model.parameters(), lr=opt.lr)
+    # scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=opt.lr_decay)
+    scheduler = lr_scheduler.OneCycleLR(
+        optimizer, 
+        opt.lr, 
+        epochs=90, 
+        steps_per_epoch=len(train_dataloader), 
+        pct_start=5/90, 
+        anneal_strategy='linear'
+    )
     # create output directory
 
     os.makedirs(os.path.join(opt.output_dir, "models"), exist_ok=True)
