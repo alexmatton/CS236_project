@@ -6,6 +6,8 @@ from torch.nn.utils import weight_norm as wn
 from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
 
+import numpy as np
+
 
 def bert_encoder():
     return BERTEncoder()
@@ -60,6 +62,31 @@ class BERTEncoder(Embedder):
         # takes the mean of the last hidden states computed by the pre-trained BERT encoder and return it
         return self.model(padded_input)[0].mean(dim=1)
 
+class GloveEncoder(Embedder):
+    '''
+    pretrained model used to embed text to a dimensional vector
+    '''
+
+    def __init__(self):
+        super(GloveEncoder, self).__init__(embed_size=300)
+        self.glovepath = 'word_vectors/glove.6B.300d.txt'
+
+        self.embeddings_dict = {}
+        with open(self.glovepath, 'r') as f:
+            for line in f:
+                values = line.split()
+                word = values[0]
+                vector = np.asarray(values[1:], "float32")
+                self.embeddings_dict[word] = vector
+
+    def forward(self, class_labels, captions):
+        '''
+        :param class_labels : torch.LongTensor, class ids
+        :param list captions: list of strings, sentences to embed
+        :return: torch.tensor embeddings: embeddings of shape (batch_size,embed_size=300)
+        '''
+        embeds = np.stack([self.embeddings_dict[cap] for cap in captions])
+        return torch.Tensor(embeds).to(class_labels.device)
 
 class OneHotClassEmbedding(Embedder):
 
