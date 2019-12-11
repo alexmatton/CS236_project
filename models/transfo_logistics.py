@@ -88,10 +88,11 @@ class GenerativeTransformer(ConditionedGenerativeModel):
 
         # shift everything by 1 to the right, such that embedding h,w will predict pixel h,w and not h,w+1
         imgs_for_prediction = torch.cat(
-            [self.first_token_embedding.expand(1, bsize, self.d_model) + condition_embd_model, 
+            [self.first_token_embedding.expand(1, bsize, self.d_model), 
             imgs[:-1,:,:]], 0
         )
-        imgs_for_prediction = self.pos_encoder(imgs_for_prediction)
+        imgs_for_prediction = self.pos_encoder(imgs_for_prediction) + condition_embd_model
+        
         output_transformer = self.transformer_encoder(imgs_for_prediction, self.mask) # h*w, bsize, d_model
 
         output_transformer = output_transformer.reshape(h, w, bsize, self.d_model)
@@ -122,20 +123,20 @@ class GenerativeTransformer(ConditionedGenerativeModel):
         :return: imgs : torch.FloatTensor of size n_imgs * c * h * w
         '''
 
-        # self.eval()
-        # bsize, channels, h, w = [captions_embd.size(0)] + [3, self.h, self.w]
+        self.eval()
+        bsize, channels, h, w = [captions_embd.size(0)] + [3, self.h, self.w]
 
-        # data = torch.zeros((bsize, channels, h, w), dtype=torch.float32, device=captions_embd.device,
-        #                    requires_grad=False)
+        data = torch.zeros((bsize, channels, h, w), dtype=torch.float32, device=captions_embd.device,
+                           requires_grad=False)
 
-        # with torch.no_grad():
-        #     for i in tqdm(range(h)):
-        #         for j in range(w):
-        #             out = self.forward(data, captions_embd)
-        #             # print(out)
-        #             out_sample = sample_from_discretized_mix_logistic(out, 10)
-        #             data[:, :, i, j] = out_sample[:, :, i, j]
-        # return data
+        with torch.no_grad():
+            for i in tqdm(range(h)):
+                for j in range(w):
+                    out = self.forward(data, captions_embd)
+                    # print(out)
+                    out_sample = sample_from_discretized_mix_logistic(out, 10)
+                    data[:, :, i, j] = out_sample[:, :, i, j]
+        return data
 
 
 class PositionalEncoding(nn.Module):
